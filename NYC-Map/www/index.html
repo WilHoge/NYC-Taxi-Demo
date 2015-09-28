@@ -1,0 +1,216 @@
+<!DOCTYPE html>  
+ <html>  
+ <head>  
+ <title>Visualization in Shiny</title>  
+   
+ <!--METADATA-->    
+ <meta http-equiv="Content-Language" content="en-gb">  
+ <meta charset="utf-8"/>  
+   
+ <style type="text/css">  
+   
+ html { height: 100% }  
+ body { height: 100%; margin: 0; padding: 0 }  
+ map-canvas { height: 100%; width:100% }  
+  
+ </style>  
+ 
+  <script type="text/javascript"  
+    src="https://maps.googleapis.com/maps/api/js?&sensor=false&language=en">  
+   </script>  
+        
+ <script type="text/javascript" src="http://google-maps-utility-library-v3.googlecode.com/svn/tags/markerclusterer/1.0/src/markerclusterer.js"></script>  
+   
+ <script src="https://maps.googleapis.com/maps/api/js?v=3.exp&signed_in=true&libraries=drawing"></script>  
+   
+   
+ 
+ <script type="text/javascript">  
+ 
+    var map = null;  
+    var Gmarkers = [];  
+    var Glines = [];
+    
+    // function to draw markers 
+    function Cities_Markers() {  
+
+           var infowindow = new google.maps.InfoWindow({ maxWidth: 500,maxHeight:500 });
+           
+           // Loop to add markers to the map based on the JSON exported from R, 
+           // which is within the variable test  
+           for (var i = 0; i < test.length; i++) {   
+                
+                // marker for "pickup"
+                var lat = test[i][2]  
+                var lng = test[i][1]  
+                var marker = new google.maps.Marker({  
+                     position: new google.maps.LatLng(lat, lng),  
+                     title: 'test',  
+                     map: map,  
+                     icon:test[i][3]  
+                });  
+                
+                // marker for "dropoff"
+                var lat2 = test[i][10]  
+                var lng2 = test[i][9]  
+                var marker2 = new google.maps.Marker({  
+                     position: new google.maps.LatLng(lat2, lng2),  
+                     title: 'test',  
+                     map: map,  
+                     icon:"http://maps.gstatic.com/mapfiles/ridefinder-images/mm_20_gray.png"
+                });  
+
+                // This sets up the infowindow  
+                google.maps.event.addListener(marker, 'click', (function(marker, i) {  
+                return function() {  
+                     infowindow.setContent('<div id="content"><p>'+  
+                     '<b>Trip distance</b> = '+test[i][4]+'miles <p>'+  
+                     '<b>Trip time</b> = '+test[i][5]+ 'minutes<p>'+  
+                     '<b>Passengers</b> = '+test[i][6]+'<p>'+  
+                     '<b>Day</b> = '+test[i][7]+'<p>'+  
+                     '<b>Time</b> = '+test[i][8]+'</div>');  
+                     infowindow.open(map, marker);  
+                }  
+                })(marker, i));  
+                Gmarkers.push(marker);  
+                
+                google.maps.event.addListener(marker2, 'click', (function(marker2, i) {  
+                return function() {  
+                     infowindow.setContent('<div id="content"><p>'+  
+                     '<b>Trip distance</b> = '+test[i][4]+'miles <p>'+  
+                     '<b>Trip time</b> = '+test[i][5]+ 'minutes<p>'+  
+                     '<b>Passengers</b> = '+test[i][6]+'<p>'+  
+                     '<b>Day</b> = '+test[i][7]+'<p>'+  
+                     '<b>Time</b> = '+test[i][8]+'</div>');  
+                     infowindow.open(map, marker2);  
+                }  
+                })(marker2, i));  
+                Gmarkers.push(marker2);  
+
+           }; // end of for loop
+
+      };  // end of Cities_markers()
+
+      // function to draw lines
+      function Draw_Lines() {  
+
+          console.log("test");
+
+          // Loop to add lines to the map based on the JSON exported from R, 
+          // which is within the variable test  
+           for (var i = 0; i < test.length; i++) {   
+              var taxiCoordinates = [
+                new google.maps.LatLng(test[i][2], test[i][1]),
+                new google.maps.LatLng(test[i][10], test[i][9])
+              ];
+        
+              var taxiPath = new google.maps.Polyline({
+                path: taxiCoordinates,
+                geodesic: true,
+                strokeColor: '#AA0000',
+                strokeOpacity: 1.0,
+                strokeWeight: 1
+              });
+
+            taxiPath.setMap(map);
+            Glines.push(taxiPath);
+        
+        }; // end of for loop
+
+      };  // end of Draw_Lines()
+
+      //Function to remove all the markers from the map  
+      function setAllMap() {  
+           for (var i = 0; i < Gmarkers.length; i++) {  
+                Gmarkers[i].setMap(null);  
+           }  
+          for (var i = 0; i < Glines.length; i++) {  
+                Glines[i].setMap(null);  
+           }      
+      }  
+
+      // Initialize the map  
+      function initialize() {  
+           var mapOptions = {  
+           center: new google.maps.LatLng(40.759988, -73.976693),  
+           zoom: 13,  
+           mapTypeId: google.maps.MapTypeId.TERRAIN  
+           };  
+           
+           map = new google.maps.Map(document.getElementById('map-canvas'),mapOptions);  
+      
+          // enable rectangle
+          var drawingManager = new google.maps.drawing.DrawingManager({  
+            drawingMode: google.maps.drawing.OverlayType.MARKER,  
+            drawingControl: true,  
+            drawingControlOptions: {  
+              position: google.maps.ControlPosition.TOP_CENTER,  
+              drawingModes: [  
+                google.maps.drawing.OverlayType.RECTANGLE  
+                ]  
+            },  
+            rectangleOptions: {   
+              fillOpacity: 0,  
+              strokeWeight: 1,
+              clickable: true,  
+              editable: false,  
+              zIndex: 1
+            } 
+          });
+
+          // Handling of rectangle
+          google.maps.event.addListener(drawingManager, 'rectanglecomplete', function(rectangle) {  
+        
+            // The following code is used to import the coordinates of the 
+            // NE and SW corners of the rectangle into R  
+            var ne = rectangle.getBounds().getNorthEast();  
+            var sw = rectangle.getBounds().getSouthWest();  
+        
+            Shiny.onInputChange("NE1", ne.lat());  
+            Shiny.onInputChange("NE2", ne.lng());  
+            Shiny.onInputChange("SW1", sw.lat());  
+            Shiny.onInputChange("SW2", sw.lng());
+            
+            drawingManager.setDrawingMode(null);
+            google.maps.event.addListener(rectangle, 'click', function() {  
+              rectangle.setVisible(false);
+              rectangle.setMap(null);
+            });
+          }); 
+          
+          drawingManager.setMap(map); 
+          
+      } // end of initialize ()
+      
+      google.maps.event.addDomListener(window, 'load', initialize);  
+
+</script>  
+
+ <script type="application/shiny-singletons"></script>  
+ <script type="application/html-dependencies">json2[2014.02.04];jquery[1.11.0];shiny[0.11.1];bootstrap[3.3.1]</script>  
+ <script src="shared/json2-min.js"></script>  
+ <script src="shared/jquery.min.js"></script>  
+ <link href="shared/shiny.css" rel="stylesheet" />  
+ <script src="shared/shiny.min.js"></script>  
+ <meta name="viewport" content="width=device-width, initial-scale=1" />  
+ <link href="shared/bootstrap/css/bootstrap.min.css" rel="stylesheet" />  
+ <script src="shared/bootstrap/js/bootstrap.min.js"></script>  
+ <script src="shared/bootstrap/shim/html5shiv.min.js"></script>  
+ <script src="shared/bootstrap/shim/respond.min.js"></script>  
+   
+</head>  
+
+ <body>  
+   
+  <div id="json" class="shiny-html-output"></div>  
+    
+<button type="button" class="btn" id="hour" onClick="Shiny.onInputChange('Earth', 1)" style="position:absolute;top:1%;left:1%;width:110px;z-index:999">MarkersRect</button>  
+<button type="button" class="btn" id="day" onClick="Shiny.onInputChange('Earth', 2)" style="position:absolute;top:1%;left:13%;width:110px;z-index:999">PathFromRect</button>
+<button type="button" class="btn" id="day" onClick="Shiny.onInputChange('Earth', 3)" style="position:absolute;top:1%;left:25%;width:110px;z-index:999">PathToRect</button>
+    
+  <div id="map-canvas" style="top:0%;right:0%;width:100%;height:100%;z-index:1"></div>  
+    
+    
+    
+ </body>  
+ </html>  
